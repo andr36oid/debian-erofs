@@ -1,0 +1,9 @@
+#!/bin/sh
+# volume up|down: change the codec volume a step. Uses whichever playback
+# control this console's codec has. The broker's amixer wrapper comes first in
+# PATH when Android's audio route must be kept.
+case "${1:-}" in up) step=5%+ ;; down) step=5%- ;; *) exit 2 ;; esac
+for control in Master 'Playback' 'Master Playback' 'Playback Volume'; do
+  amixer -q sset "$control" "$step" 2>/dev/null && exit 0
+done
+exit 1

@@ -1,0 +1,3 @@
+# Build tools taken from the Debian archive, with their SHA-256. The workflow
+# and local builds use exactly these, whatever the build machine ships.
+mmdebstrap http://deb.debian.org/debian/pool/main/m/mmdebstrap/mmdebstrap_1.5.7-1+deb13u1_all.deb df731ee92b0ad40f9618b8b1c98c2e90635224f6b21c0905dab65ca099c8fe14

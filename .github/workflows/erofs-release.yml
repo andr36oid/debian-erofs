@@ -1,0 +1,64 @@
+name: EROFS release
+
+# Started by hand. Builds the Debian image for andr36oid from the official
+# Debian archive, checks it, and publishes it as a release.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version as MMDDYYYY (empty means today, UTC)
+        required: false
+        default: ""
+      revision:
+        description: Our revision of this version (raise it to publish again)
+        required: true
+        default: "1"
+      snapshot:
+        description: Optional snapshot.debian.org time stamp (for example 20261119T000000Z) for a repeatable package set
+        required: false
+        default: ""
+      prerelease:
+        description: Publish as a pre-release (installers only take full releases)
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    # A native arm64 runner: Debian's arm64 packages and their install scripts
+    # run directly, with no emulation. build.sh also works on x86 with qemu-user.
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: erofs
+      - name: Install tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq erofs-utils xz-utils python3 gcc libc6-dev debian-archive-keyring
+          sudo modprobe erofs
+          echo "MMDEBSTRAP=$(bash erofs/fetch-tools.sh "$RUNNER_TEMP/tools")" >> "$GITHUB_ENV"
+          df -h / "$RUNNER_TEMP"
+      - name: Choose the version
+        run: |
+          version="${{ inputs.version }}"
+          [ -n "$version" ] || version=$(date -u +%m%d%Y)
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+      - name: Build and verify
+        run: |
+          sudo env MMDEBSTRAP="$MMDEBSTRAP" SNAPSHOT="${{ inputs.snapshot }}" \
+            bash erofs/build.sh "$RUNNER_TEMP/out" "$VERSION" "${{ inputs.revision }}"
+          sudo chown -R "$USER" "$RUNNER_TEMP/out"
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="debian13-$VERSION-r${{ inputs.revision }}"
+          flag=""
+          [ "${{ inputs.prerelease }}" = "true" ] && flag="--prerelease"
+          gh release create "$tag" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" $flag \
+            --title "Debian 13 for andr36oid, $VERSION (revision ${{ inputs.revision }})" \
+            --notes "A plain Debian 13 (trixie) arm64 system with a small desktop, as a compressed read-only EROFS image for andr36oid. It runs full screen with a desktop, or in the background with systemd. Packed with xz; manifest.json lists the files, sizes, checksums and every Debian package." \
+            "$RUNNER_TEMP"/out/*

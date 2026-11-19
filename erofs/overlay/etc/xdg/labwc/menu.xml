@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<openbox_menu>
+  <menu id="root-menu" label="">
+    <item label="Terminal"><action name="Execute" command="foot"/></item>
+    <item label="Files"><action name="Execute" command="pcmanfm"/></item>
+    <item label="Text editor"><action name="Execute" command="mousepad"/></item>
+    <item label="Run a program"><action name="Execute" command="fuzzel"/></item>
+    <item label="Sound mixer"><action name="Execute" command="foot -e alsamixer"/></item>
+    <item label="Root terminal"><action name="Execute" command="/usr/libexec/andr36oid-desktop/request terminal"/></item>
+    <separator/>
+    <item label="Keyboard on or off"><action name="Execute" command="pkill -RTMIN -x wvkbd-mobintl"/></item>
+    <item label="Sleep"><action name="Execute" command="/usr/libexec/andr36oid-desktop/request sleep"/></item>
+    <item label="Leave the desktop"><action name="Exit"/></item>
+  </menu>
+</openbox_menu>

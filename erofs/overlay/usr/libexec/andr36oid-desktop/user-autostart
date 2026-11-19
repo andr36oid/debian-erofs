@@ -1,0 +1,11 @@
+#!/bin/sh
+# Started by labwc as the desktop user, once the compositor is up.
+state=${A36_STATE:-/run/andr36oid-desktop}
+case "${A36_DISPLAY_ROTATION:-0}" in
+  90|180|270)
+    output=$(wlr-randr 2>/dev/null | awk 'NR==1 {print $1}')
+    [ -n "$output" ] && wlr-randr --output "$output" --transform "$A36_DISPLAY_ROTATION" ;;
+esac
+# On-screen keyboard, hidden until Y (or the menu) toggles it.
+wvkbd-mobintl --hidden -L 170 >/dev/null 2>&1 &
+echo $! > "$state/osk.pid"

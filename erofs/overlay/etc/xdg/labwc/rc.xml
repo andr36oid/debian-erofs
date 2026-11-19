@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<!-- labwc settings for a 640x480 to 1024x768 handheld driven by a gamepad. -->
+<labwc_config>
+  <core>
+    <gap>0</gap>
+  </core>
+  <theme>
+    <name></name>
+    <cornerRadius>0</cornerRadius>
+    <font place="ActiveWindow"><name>DejaVu Sans</name><size>9</size><weight>bold</weight></font>
+    <font place="InactiveWindow"><name>DejaVu Sans</name><size>9</size></font>
+    <font place="MenuItem"><name>DejaVu Sans</name><size>11</size></font>
+    <font place="OnScreenDisplay"><name>DejaVu Sans</name><size>11</size></font>
+  </theme>
+  <windowSwitcher show="yes" preview="no" outlines="no"/>
+  <keyboard>
+    <default/>
+    <!-- Start on the pad is Super: tap it for the main menu. -->
+    <keybind key="Super_L" onRelease="yes"><action name="ShowMenu" menu="root-menu"/></keybind>
+    <keybind key="W-k"><action name="Execute" command="pkill -RTMIN -x wvkbd-mobintl"/></keybind>
+  </keyboard>
+  <mouse>
+    <default/>
+  </mouse>
+  <windowRules>
+    <!-- The screen is small: every new window opens full size. -->
+    <windowRule identifier="*"><action name="Maximize"/></windowRule>
+  </windowRules>
+</labwc_config>

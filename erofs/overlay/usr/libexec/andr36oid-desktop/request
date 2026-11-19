@@ -1,0 +1,6 @@
+#!/bin/sh
+# request terminal|sleep: ask the root helper of the desktop session.
+case "${1:-}" in terminal|sleep) ;; *) exit 2 ;; esac
+fifo=${A36_STATE:-/run/andr36oid-desktop}/root-request
+[ -p "$fifo" ] || exit 1
+printf '%s\n' "$1" > "$fifo"

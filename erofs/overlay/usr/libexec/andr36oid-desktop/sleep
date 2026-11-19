@@ -1,0 +1,7 @@
+#!/bin/sh
+# Ask the andr36oid broker for a real suspend. In a full-screen session the
+# broker installs a systemctl stand-in in /usr/local/bin that turns this into a
+# request; the broker then blanks the screen and suspends the console.
+[ "$(cat /run/.a36-session-manager 2>/dev/null)" = wrapper ] || exit 1
+[ -x /usr/local/bin/systemctl ] || exit 1
+exec /usr/local/bin/systemctl suspend

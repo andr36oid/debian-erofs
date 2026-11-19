@@ -1,0 +1,14 @@
+# Units that cannot work inside an andr36oid container or only cost memory and
+# card writes on a 1 GB handheld. They are masked (linked to /dev/null).
+getty@tty1.service
+serial-getty@ttyS0.service
+console-getty.service
+systemd-udevd.service
+systemd-udevd-control.socket
+systemd-udevd-kernel.socket
+systemd-timesyncd.service
+apt-daily.timer
+apt-daily-upgrade.timer
+dpkg-db-backup.timer
+e2scrub_all.timer
+fstrim.timer

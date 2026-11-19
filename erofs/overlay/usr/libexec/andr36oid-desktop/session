@@ -1,0 +1,86 @@
+#!/bin/sh
+# Full-screen desktop session. The andr36oid broker starts this as root after
+# it has handed the screen, input and sound over from Android. When it returns,
+# the broker gives everything back to Android.
+#
+# PID 1 here is the broker's supervisor, not systemd: there is no logind, no
+# udevd and no user manager. This script stands in for the parts a desktop
+# needs: input tags for libinput, a runtime folder, a session D-Bus, the
+# gamepad mapper and a root helper with a fixed set of requests.
+set -u
+STATE=/run/andr36oid-desktop
+LIB=/usr/libexec/andr36oid-desktop
+USER_NAME=user
+USER_ID=1000
+RUNTIME=/run/user/$USER_ID
+log() { printf 'desktop: %s\n' "$*" >&2; }
+
+[ "$(id -u)" = 0 ] || { log 'must be started as root by the broker'; exit 1; }
+# Never take a background (systemd) container's screen by accident.
+[ "$(cat /proc/1/comm 2>/dev/null)" != systemd ] || { log 'systemd is PID 1: this is the background mode'; exit 1; }
+
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+[ -d /run/andr36oid-audio-bin ] && PATH=/run/andr36oid-audio-bin:$PATH
+export PATH LANG=C.UTF-8
+unset LC_ALL LC_CTYPE
+
+mkdir -p "$STATE" || exit 1
+chown "root:$USER_ID" "$STATE" && chmod 0770 "$STATE" || exit 1
+rm -f "$STATE"/osk.pid "$STATE"/padmouse.ready "$STATE"/root-request
+
+# libinput reads device tags from the udev database. Keyboards and mice that
+# are plugged in now get tags; the mapper tags its own virtual device.
+"$LIB/a36-padmouse" seed-udev
+"$LIB/a36-padmouse" run "$STATE" & mapper=$!
+n=0
+while [ ! -s "$STATE/padmouse.ready" ] && [ "$n" -lt 50 ]; do sleep 0.1; n=$((n+1)); done
+log "pointer device: $(cat "$STATE/padmouse.ready" 2>/dev/null || echo none)"
+
+mkdir -p "$RUNTIME" && chown "$USER_ID:$USER_ID" "$RUNTIME" && chmod 0700 "$RUNTIME" || exit 1
+
+# Requests from the user session that need root. Fixed words only, never a
+# command line: "terminal" opens a root terminal, "sleep" suspends.
+mkfifo -m 0620 "$STATE/root-request" && chown "root:$USER_ID" "$STATE/root-request" || exit 1
+(
+  exec 3<>"$STATE/root-request"
+  while IFS= read -r word <&3; do
+    case "$word" in
+      terminal)
+        display=
+        for socket in "$RUNTIME"/wayland-*; do
+          case "$socket" in *.lock) continue ;; esac
+          [ -S "$socket" ] && { display=${socket##*/}; break; }
+        done
+        [ -n "$display" ] && env -i PATH="$PATH" HOME=/root TERM=xterm-256color LANG=C.UTF-8 \
+          XDG_RUNTIME_DIR="$RUNTIME" WAYLAND_DISPLAY="$display" setsid foot >/dev/null 2>&1 & ;;
+      sleep) "$LIB/sleep" suspend ;;
+      *) log "ignored root request" ;;
+    esac
+  done
+) & helper=$!
+
+case "${A36_DISPLAY_ROTATION:-0}" in 0|90|180|270) ;; *) A36_DISPLAY_ROTATION=0 ;; esac
+
+# For hardware tests: a file named .andr36oid-desktop-debug on the games card
+# turns on the compositor's debug log (it goes to the broker's session log).
+debug=
+[ -e /roms/.andr36oid-desktop-debug ] && debug=-d
+
+log "starting labwc as $USER_NAME (renderer ${A36_DESKTOP_RENDERER:-pixman}, rotation $A36_DISPLAY_ROTATION)"
+env -i \
+  PATH="$PATH" HOME=/home/$USER_NAME USER=$USER_NAME LOGNAME=$USER_NAME SHELL=/bin/bash \
+  LANG=C.UTF-8 TERM=xterm-256color XDG_RUNTIME_DIR="$RUNTIME" \
+  XDG_SESSION_TYPE=wayland XDG_CURRENT_DESKTOP=labwc:wlroots \
+  LIBSEAT_BACKEND=noop WLR_RENDERER="${A36_DESKTOP_RENDERER:-pixman}" \
+  WLR_NO_HARDWARE_CURSORS=1 WLR_LIBINPUT_NO_DEVICES=1 \
+  SDL_VIDEODRIVER=wayland GDK_BACKEND=wayland QT_QPA_PLATFORM=wayland MOZ_ENABLE_WAYLAND=1 \
+  A36_DISPLAY_ROTATION="$A36_DISPLAY_ROTATION" A36_STATE="$STATE" \
+  setpriv --reuid="$USER_ID" --regid="$USER_ID" --init-groups -- \
+  dbus-run-session -- labwc $debug
+rc=$?
+log "labwc ended (status $rc)"
+
+kill "$mapper" "$helper" 2>/dev/null
+wait "$mapper" 2>/dev/null
+# A clean exit from the menu returns to Android normally.
+exit 0

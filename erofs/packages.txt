@@ -1,0 +1,30 @@
+# Debian packages in the image, one per line. Recommends are not installed.
+# Base system, used in both modes. systemd is PID 1 in the background mode.
+systemd
+systemd-sysv
+dbus
+dbus-bin
+procps
+iproute2
+iputils-ping
+ca-certificates
+less
+nano
+bash-completion
+openssh-server
+openssh-client
+curl
+htop
+psmisc
+# Desktop, used in the full-screen mode.
+labwc
+wlr-randr
+wvkbd
+foot
+fuzzel
+pcmanfm
+mousepad
+adwaita-icon-theme
+fonts-dejavu-core
+alsa-utils
+xdg-utils
